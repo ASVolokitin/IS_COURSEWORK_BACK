@@ -2,6 +2,8 @@ package com.swamp_game.backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +17,7 @@ import com.swamp_game.backend.request.JoinRoomRequest;
 import com.swamp_game.backend.response.CreateRoomResponse;
 import com.swamp_game.backend.response.JoinRoomResponse;
 import com.swamp_game.backend.service.LobbyService;
+import com.swamp_game.backend.utils.response_status.ResponseStatus;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -36,19 +39,21 @@ public class LobbyController {
     }
 
     @PostMapping("/join")
-    public JoinRoomResponse joinRoom(@RequestBody JoinRoomRequest request, HttpSession session) {
+    public ResponseEntity<JoinRoomResponse> joinRoom(@RequestBody JoinRoomRequest request, HttpSession session) {
 
         JoinRoomResponse response = lobbyService.joinRoom(request);
         messagingTemplate.convertAndSend("/topic/rooms", lobbyService.getAllRooms());
 
-        return response;
+        if (response.getStatus() == ResponseStatus.RESPONSE_OK) return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }   
 
     @PostMapping("/create")
-    public CreateRoomResponse createRoom(@RequestBody CreateRoomRequest request, HttpSession session) {
+    public ResponseEntity<CreateRoomResponse> createRoom(@RequestBody CreateRoomRequest request, HttpSession session) {
         CreateRoomResponse response = lobbyService.createRoom(request);
         messagingTemplate.convertAndSend("/topic/rooms", lobbyService.getAllRooms());
-        return response;
+        if (response.getStatus() == ResponseStatus.RESPONSE_OK) return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
 }
