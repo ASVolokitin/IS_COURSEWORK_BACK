@@ -7,7 +7,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.swamp_game.backend.dto.GameRoomDTO;
@@ -17,7 +16,6 @@ import com.swamp_game.backend.request.JoinRoomRequest;
 import com.swamp_game.backend.service.LobbyService;
 
 @RestController
-@RequestMapping("/api")
 public class LobbyController {
 
     private final LobbyService lobbyService;
@@ -27,6 +25,8 @@ public class LobbyController {
         this.lobbyService = lobbyService;
         this.messagingTemplate = messagingTemplate;
     }
+
+
 
     @MessageMapping("/room.create")
     @SendTo("/topic/rooms")
