@@ -2,24 +2,57 @@ package com.swamp_game.backend.controller;
 
 import java.util.List;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.swamp_game.backend.dto.GameRoomDTO;
+import com.swamp_game.backend.request.CreateRoomRequest;
+import com.swamp_game.backend.request.JoinRoomRequest;
+import com.swamp_game.backend.response.CreateRoomResponse;
+import com.swamp_game.backend.response.JoinRoomResponse;
 import com.swamp_game.backend.service.LobbyService;
+
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("api/lobby")
 public class LobbyController {
-    private final LobbyService lobbyService;
 
-    public LobbyController(LobbyService lobbyService) {
+    private final LobbyService lobbyService;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public LobbyController (LobbyService lobbyService, SimpMessagingTemplate messagingTemplate) {
         this.lobbyService = lobbyService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @GetMapping
     public List<GameRoomDTO> getAllRooms() {
         return lobbyService.getAllRooms();
     }
+
+    @PostMapping("/join")
+    public JoinRoomResponse joinRoom(@RequestBody JoinRoomRequest request, HttpSession session) {
+
+        String roomId = (String) session.getAttribute("roomId");
+        String playerId = (String) session.getAttribute("playerId");
+        String password = (String) session.getAttribute("password");
+
+        JoinRoomResponse response = lobbyService.joinRoom(roomId, playerId, password);
+        messagingTemplate.convertAndSend("/topic/rooms", lobbyService.getAllRooms());
+
+        return response;
+    }   
+
+    @PostMapping("/create")
+    public CreateRoomResponse createRoom(@RequestBody CreateRoomRequest request, HttpSession session) {
+        CreateRoomResponse response = lobbyService.createRoom(request);
+        messagingTemplate.convertAndSend("/topic/rooms", lobbyService.getAllRooms());
+        return response;
+    }
+
 }

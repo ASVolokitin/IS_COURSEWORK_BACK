@@ -13,15 +13,22 @@ import com.swamp_game.backend.dto.PlayerDTO;
 import com.swamp_game.backend.model.GameRoom;
 import com.swamp_game.backend.model.Player;
 import com.swamp_game.backend.request.CreateRoomRequest;
+import com.swamp_game.backend.response.CreateRoomResponse;
+import com.swamp_game.backend.response.JoinRoomResponse;
 import com.swamp_game.backend.utils.GameStatus;
+import com.swamp_game.backend.utils.response_status.JoinRoomResponseStatus;
+import com.swamp_game.backend.utils.response_status.ResponseStatus;
 
 @Service
 public class LobbyService {
     private final Map<String, GameRoom> rooms = new ConcurrentHashMap<>();
     private final Map<String, String> playerToRoomMap = new ConcurrentHashMap<>();
 
-    public GameRoom createRoom(CreateRoomRequest request) {
+    public CreateRoomResponse createRoom(CreateRoomRequest request) {
+        
+        CreateRoomResponse response = new CreateRoomResponse();
         GameRoom room = new GameRoom(request.getRoomName(), request.getCreatorId(), request.getMaxPlayers());
+        response.setRoomId(room.getId());
         
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             room.setPassword(request.getPassword());
@@ -29,32 +36,58 @@ public class LobbyService {
         
         rooms.put(room.getId(), room);
         
-        return room;
+        return response;
     }
 
-    public Optional<GameRoom> joinRoom(String roomId, String playerId, String password) {
+    public JoinRoomResponse joinRoom(String roomId, String playerId, String password) {
+        
+        JoinRoomResponse response = new JoinRoomResponse();
+        response.setStatus(ResponseStatus.RESPONSE_ERROR);
+        response.setRequestPlayerId(playerId);
+        
         GameRoom room = rooms.get(roomId);
-        if (room == null || room.isFull() || room.getStatus() != GameStatus.WAITING) {
-            return Optional.empty();
+
+        if (room == null) {
+            response.setMessage(JoinRoomResponseStatus.ROOM_NOT_FOUND.format(roomId));
+            response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            return response;
+        }
+
+        if (room.isFull()) {
+            response.setMessage(JoinRoomResponseStatus.ROOM_IS_FULL.format(roomId));
+            response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            return response;
+        }
+
+        if (room.getStatus() != GameStatus.WAITING) {
+            response.setMessage(JoinRoomResponseStatus.ROOM_IS_NOT_WAITING.format(roomId));
+            response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            return response;
         }
 
         if (playerToRoomMap.containsKey(playerId)) {
-            return Optional.empty();
-        // throw new RuntimeException("Player " + playerId + " is already in a room " + 
-        //     playerToRoomMap.get(playerId));
-    }
+            response.setMessage(JoinRoomResponseStatus.PLAYER_IS_ALREADY_IN_DIFFERENT_ROOM.format(playerId, playerToRoomMap.get(playerId)));
+            response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            return response;
+        }
 
         if (room.getPassword() != null && !room.getPassword().equals(password)) {
-            return Optional.empty();
+            response.setMessage(JoinRoomResponseStatus.INCORRECT_PASSWORD.format(roomId));
+            response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            return response;
         }
 
         Player player = new Player(playerId);
         if (room.addPlayer(player)) {
             playerToRoomMap.put(playerId, roomId);
-            return Optional.of(room);
+            response.setMessage(JoinRoomResponseStatus.SUCCESSFUL_JOIN.format(playerId, roomId));
+            response.setStatus(ResponseStatus.RESPONSE_OK);
+            response.setRoomId(roomId);
+            response.setRooms(getAllRooms());
+            return response;
         }
-        
-        return Optional.empty();
+
+        return response;
     }
 
     public List<GameRoomDTO> getAllRooms() {
