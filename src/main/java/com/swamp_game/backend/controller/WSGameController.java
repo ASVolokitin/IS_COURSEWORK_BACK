@@ -8,11 +8,11 @@ import com.swamp_game.backend.service.GameService;
 
 // TODO: контроллер для самой игры
 @Controller
-public class GameController {
+public class WSGameController {
 
     private final GameService gameService;
 
-    public GameController(GameService gameService, SimpMessagingTemplate messagingTemplate) {
+    public WSGameController(GameService gameService, SimpMessagingTemplate messagingTemplate) {
         this.gameService = gameService;
     }
 }
