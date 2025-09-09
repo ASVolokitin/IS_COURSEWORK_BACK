@@ -38,11 +38,7 @@ public class LobbyController {
     @PostMapping("/join")
     public JoinRoomResponse joinRoom(@RequestBody JoinRoomRequest request, HttpSession session) {
 
-        String roomId = (String) session.getAttribute("roomId");
-        String playerId = (String) session.getAttribute("playerId");
-        String password = (String) session.getAttribute("password");
-
-        JoinRoomResponse response = lobbyService.joinRoom(roomId, playerId, password);
+        JoinRoomResponse response = lobbyService.joinRoom(request);
         messagingTemplate.convertAndSend("/topic/rooms", lobbyService.getAllRooms());
 
         return response;

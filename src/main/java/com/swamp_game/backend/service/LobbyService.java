@@ -13,6 +13,7 @@ import com.swamp_game.backend.dto.PlayerDTO;
 import com.swamp_game.backend.model.GameRoom;
 import com.swamp_game.backend.model.Player;
 import com.swamp_game.backend.request.CreateRoomRequest;
+import com.swamp_game.backend.request.JoinRoomRequest;
 import com.swamp_game.backend.response.CreateRoomResponse;
 import com.swamp_game.backend.response.JoinRoomResponse;
 import com.swamp_game.backend.utils.GameStatus;
@@ -33,56 +34,59 @@ public class LobbyService {
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             room.setPassword(request.getPassword());
         }
-        
-        rooms.put(room.getId(), room);
-        
+        rooms.put(room.getId(), room);   
+        response.setRequestPlayerId(request.getCreatorId());
+        response.setStatus(ResponseStatus.RESPONSE_OK);     
         return response;
     }
 
-    public JoinRoomResponse joinRoom(String roomId, String playerId, String password) {
+    public JoinRoomResponse joinRoom(JoinRoomRequest request) {
+        System.out.println(request.getRoomId());
+        System.out.println(request.getPlayerId());
+        System.out.println(request.getPassword());
         
         JoinRoomResponse response = new JoinRoomResponse();
         response.setStatus(ResponseStatus.RESPONSE_ERROR);
-        response.setRequestPlayerId(playerId);
+        response.setRequestPlayerId(request.getPlayerId());
         
-        GameRoom room = rooms.get(roomId);
+        GameRoom room = rooms.get(request.getRoomId());
 
         if (room == null) {
-            response.setMessage(JoinRoomResponseStatus.ROOM_NOT_FOUND.format(roomId));
+            response.setMessage(JoinRoomResponseStatus.ROOM_NOT_FOUND.format(request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
         }
 
         if (room.isFull()) {
-            response.setMessage(JoinRoomResponseStatus.ROOM_IS_FULL.format(roomId));
+            response.setMessage(JoinRoomResponseStatus.ROOM_IS_FULL.format(request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
         }
 
         if (room.getStatus() != GameStatus.WAITING) {
-            response.setMessage(JoinRoomResponseStatus.ROOM_IS_NOT_WAITING.format(roomId));
+            response.setMessage(JoinRoomResponseStatus.ROOM_IS_NOT_WAITING.format(request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
         }
 
-        if (playerToRoomMap.containsKey(playerId)) {
-            response.setMessage(JoinRoomResponseStatus.PLAYER_IS_ALREADY_IN_DIFFERENT_ROOM.format(playerId, playerToRoomMap.get(playerId)));
+        if (playerToRoomMap.containsKey(request.getPlayerId())) {
+            response.setMessage(JoinRoomResponseStatus.PLAYER_IS_ALREADY_IN_DIFFERENT_ROOM.format(request.getPlayerId(), playerToRoomMap.get(request.getPlayerId())));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
         }
 
-        if (room.getPassword() != null && !room.getPassword().equals(password)) {
-            response.setMessage(JoinRoomResponseStatus.INCORRECT_PASSWORD.format(roomId));
+        if (room.getPassword() != null && !room.getPassword().equals(request.getPassword())) {
+            response.setMessage(JoinRoomResponseStatus.INCORRECT_PASSWORD.format(request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
         }
 
-        Player player = new Player(playerId);
+        Player player = new Player(request.getPlayerId());
         if (room.addPlayer(player)) {
-            playerToRoomMap.put(playerId, roomId);
-            response.setMessage(JoinRoomResponseStatus.SUCCESSFUL_JOIN.format(playerId, roomId));
+            playerToRoomMap.put(request.getPlayerId(), request.getRoomId());
+            response.setMessage(JoinRoomResponseStatus.SUCCESSFUL_JOIN.format(request.getPlayerId(), request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_OK);
-            response.setRoomId(roomId);
+            response.setRoomId(request.getRoomId());
             response.setRooms(getAllRooms());
             return response;
         }

@@ -376,11 +376,11 @@
             }
 
             async createRoom() {
-                const playerName = document.getElementById('playerName').value.trim();
+                const playerId = document.getElementById('playerName').value.trim();
                 const roomName = document.getElementById('roomName').value.trim();
                 const maxPlayers = document.getElementById('maxPlayers').value;
 
-                if (!playerName || !roomName) {
+                if (!playerId || !roomName) {
                     this.showMessage('createMessage', 'Заполните все поля', 'error');
                     return;
                 }
@@ -393,7 +393,7 @@
                         },
                         body: JSON.stringify({
                             roomName: roomName,
-                            creator: playerName,
+                            creatorId: playerId,
                             maxPlayers: parseInt(maxPlayers)
                         })
                     });
@@ -402,7 +402,7 @@
                     
                     if (response.ok) {
                         this.showMessage('createMessage', 'Комната создана! ID: ' + result.roomId, 'success');
-                        this.currentUser = playerName;
+                        this.currentUser = playerId;
                         this.currentRoom = result.roomId;
                         this.updateUserInfo();
                     } else {
@@ -414,11 +414,11 @@
             }
 
             async joinRoom() {
-                const playerName = document.getElementById('joinPlayerName').value.trim();
+                const playerId = document.getElementById('joinPlayerName').value.trim();
                 const roomId = document.getElementById('joinRoomId').value.trim();
                 const password = document.getElementById('joinPassword').value;
 
-                if (!playerName || !roomId) {
+                if (!playerId || !roomId) {
                     this.showMessage('joinMessage', 'Заполните имя и ID комнаты', 'error');
                     return;
                 }
@@ -431,7 +431,7 @@
                         },
                         body: JSON.stringify({
                             roomId: roomId,
-                            playerName: playerName,
+                            playerId: playerId,
                             password: password
                         })
                     });
@@ -440,7 +440,7 @@
                     
                     if (response.ok) {
                         this.showMessage('joinMessage', 'Успешное присоединение!', 'success');
-                        this.currentUser = playerName;
+                        this.currentUser = playerId;
                         this.currentRoom = roomId;
                         this.updateUserInfo();
                     } else {
@@ -524,9 +524,7 @@
 
         // Глобальные функции
         function copyRoomId(roomId) {
-            navigator.clipboard.writeText(roomId).then(() => {
-                alert('ID комнаты скопирован: ' + roomId);
-            });
+            navigator.clipboard.writeText(roomId);
         }
 
         // Инициализация при загрузке страницы
