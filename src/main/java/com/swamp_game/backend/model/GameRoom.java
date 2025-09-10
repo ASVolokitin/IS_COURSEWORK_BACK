@@ -44,7 +44,7 @@ public class GameRoom {
         return players.removeIf(p -> p.getId().equals(playerId));
     }
 
-    public int getCurrentPlayers() {
+    public int getCurrentPlayersAmount() {
         return players.size();
     }
 

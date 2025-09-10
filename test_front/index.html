@@ -295,7 +295,7 @@
 
             <!-- Список комнат -->
             <div class="rooms-container">
-                <h2>Доступные комнаты (обновляется через WebSocket)</h2>
+                <h2>Доступные комнаты</h2>
                 <div id="roomsList">
                     <div class="loading">Загрузка списка комнат...</div>
                 </div>
@@ -465,7 +465,7 @@
                             <div class="room-name">${this.escapeHtml(room.name)}</div>
                             <div class="room-meta">
                                 <span>ID: ${room.id}</span>
-                                <span>Создатель: ${this.escapeHtml(room.creator)}</span>
+                                <span>Создатель: ${this.escapeHtml(room.creatorId)}</span>
                                 <span>Игроков: ${room.currentPlayers}/${room.maxPlayers}</span>
                                 <span class="room-status status-${room.status.toLowerCase()}">
                                     ${this.getStatusText(room.status)}

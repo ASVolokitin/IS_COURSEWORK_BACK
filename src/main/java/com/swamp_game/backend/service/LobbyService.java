@@ -22,33 +22,31 @@ import com.swamp_game.backend.utils.response_status.ResponseStatus;
 
 @Service
 public class LobbyService {
+
     private final Map<String, GameRoom> rooms = new ConcurrentHashMap<>();
     private final Map<String, String> playerToRoomMap = new ConcurrentHashMap<>();
 
     public CreateRoomResponse createRoom(CreateRoomRequest request) {
-        
+
         CreateRoomResponse response = new CreateRoomResponse();
         GameRoom room = new GameRoom(request.getRoomName(), request.getCreatorId(), request.getMaxPlayers());
         response.setRoomId(room.getId());
-        
+
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             room.setPassword(request.getPassword());
         }
-        rooms.put(room.getId(), room);   
+        rooms.put(room.getId(), room);
         response.setRequestPlayerId(request.getCreatorId());
-        response.setStatus(ResponseStatus.RESPONSE_OK);     
+        response.setStatus(ResponseStatus.RESPONSE_OK);
         return response;
     }
 
     public JoinRoomResponse joinRoom(JoinRoomRequest request) {
-        System.out.println(request.getRoomId());
-        System.out.println(request.getPlayerId());
-        System.out.println(request.getPassword());
-        
+
         JoinRoomResponse response = new JoinRoomResponse();
         response.setStatus(ResponseStatus.RESPONSE_ERROR);
         response.setRequestPlayerId(request.getPlayerId());
-        
+
         GameRoom room = rooms.get(request.getRoomId());
 
         if (room == null) {
@@ -69,16 +67,24 @@ public class LobbyService {
             return response;
         }
 
-        if (playerToRoomMap.containsKey(request.getPlayerId())) {
-            response.setMessage(JoinRoomResponseStatus.PLAYER_IS_ALREADY_IN_DIFFERENT_ROOM.format(request.getPlayerId(), playerToRoomMap.get(request.getPlayerId())));
-            response.setStatus(ResponseStatus.RESPONSE_ERROR);
-            return response;
-        }
-
         if (room.getPassword() != null && !room.getPassword().equals(request.getPassword())) {
             response.setMessage(JoinRoomResponseStatus.INCORRECT_PASSWORD.format(request.getRoomId()));
             response.setStatus(ResponseStatus.RESPONSE_ERROR);
             return response;
+        }
+
+        if (playerToRoomMap.containsKey(request.getPlayerId())) {
+            // response.setMessage(JoinRoomResponseStatus.PLAYER_IS_ALREADY_IN_DIFFERENT_ROOM.format(request.getPlayerId(), playerToRoomMap.get(request.getPlayerId())));
+            // response.setStatus(ResponseStatus.RESPONSE_ERROR);
+            String previousRoomId = playerToRoomMap.get(request.getPlayerId());
+            // System.out.println("previousRoomId: " + previousRoomId);
+            // System.out.println("playerId: " + request.getPlayerId());
+            GameRoom previousRoom = rooms.get(previousRoomId);
+            previousRoom.removePlayer(request.getPlayerId());
+            rooms.put(previousRoomId, previousRoom);
+            // playerToRoomMap.remove(request.getPlayerId());
+
+            // return response;
         }
 
         Player player = new Player(request.getPlayerId());
@@ -88,6 +94,14 @@ public class LobbyService {
             response.setStatus(ResponseStatus.RESPONSE_OK);
             response.setRoomId(request.getRoomId());
             response.setRooms(getAllRooms());
+
+            // Iterator<ConcurrentHashMap.Entry<String, GameRoom>> i = rooms.entrySet().iterator();
+
+            // while (i.hasNext()) {
+            //     ConcurrentHashMap.Entry<String, GameRoom> entry = i.next();
+            //     System.out.println("Key = " + entry.getKey() + ", value = " + entry.getValue());
+            // }
+
             return response;
         }
 
@@ -107,12 +121,12 @@ public class LobbyService {
     private GameRoomDTO convertToDTO(GameRoom room) {
         List<PlayerDTO> playerDTOs = room.getPlayers().stream()
                 .map(player -> new PlayerDTO(
-                        player.getId(),
-                        player.getUsername(),
-                        player.getScore(),
-                        player.isReady(),
-                        player.getUsername().equals(room.getCreator())
-                ))
+                player.getId(),
+                player.getUsername(),
+                player.getScore(),
+                player.isReady(),
+                player.getUsername().equals(room.getCreator())
+        ))
                 .collect(Collectors.toList());
 
         GameRoomDTO dto = new GameRoomDTO(
@@ -120,13 +134,13 @@ public class LobbyService {
                 room.getName(),
                 room.getCreator(),
                 room.getMaxPlayers(),
-                room.getCurrentPlayers(),
+                room.getCurrentPlayersAmount(),
                 room.getStatus(),
                 room.getCreatedAt()
         );
         dto.setPlayers(playerDTOs);
         dto.setHasPassword(room.getPassword() != null);
-        
+
         return dto;
     }
 
