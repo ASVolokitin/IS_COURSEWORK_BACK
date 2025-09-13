@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
+        /* Стили остаются без изменений */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -311,21 +312,44 @@
                 this.currentUser = 'Гость';
                 this.currentRoom = null;
                 this.rooms = [];
+                this.baseUrl = this.getBaseUrl();
+                this.wsUrl = this.getWebSocketUrl();
+                
+                console.log('Base URL:', this.baseUrl);
+                console.log('WebSocket URL:', this.wsUrl);
                 
                 this.initialize();
+            }
+
+            // Автоматическое определение базового URL
+            getBaseUrl() {
+                // Если открыто через ngrok, используем текущий origin
+                if (window.location.host.includes('ngrok')) {
+                    return window.location.origin;
+                }
+                // Локальная разработка
+                return 'http://localhost:8080';
+            }
+
+            // Автоматическое определение WebSocket URL
+            getWebSocketUrl() {
+                const baseUrl = this.getBaseUrl();
+                // Заменяем http на ws, https на wss
+                return baseUrl.replace(/^http/, 'ws') + '/ws';
             }
 
             initialize() {
                 this.setupEventListeners();
                 this.connectWebSocket();
-                this.loadRooms(); // Загружаем комнаты при старте
+                this.loadRooms();
             }
 
             connectWebSocket() {
                 this.updateStatus('connecting', 'Подключение WebSocket...');
                 
                 try {
-                    const socket = new SockJS('http://localhost:8080/ws');
+                    // Используем SockJS с автоматически определенным URL
+                    const socket = new SockJS(this.baseUrl + '/ws');
                     this.stompClient = Stomp.over(socket);
                     
                     this.stompClient.debug = () => {}; // Отключаем логи
@@ -337,13 +361,17 @@
                     }, (error) => {
                         this.updateStatus('disconnected', 'Ошибка WebSocket');
                         this.showMessage('joinMessage', 'WebSocket недоступен', 'error');
+                        console.error('WebSocket error:', error);
                     });
                 } catch (error) {
                     this.updateStatus('disconnected', 'Ошибка подключения');
+                    console.error('Connection error:', error);
                 }
             }
 
             setupSubscriptions() {
+                if (!this.stompClient || !this.connected) return;
+                
                 // Подписка на обновления списка комнат
                 this.stompClient.subscribe('/topic/rooms', (message) => {
                     try {
@@ -365,13 +393,16 @@
 
             async loadRooms() {
                 try {
-                    const response = await fetch('http://localhost:8080/api/lobby');
+                    const response = await fetch(this.baseUrl + '/api/lobby');
                     if (response.ok) {
                         this.rooms = await response.json();
                         this.renderRoomsList();
+                    } else {
+                        console.error('Failed to load rooms:', response.status);
                     }
                 } catch (error) {
                     console.error('Error loading rooms:', error);
+                    this.showMessage('roomsList', 'Ошибка загрузки комнат', 'error');
                 }
             }
 
@@ -386,7 +417,7 @@
                 }
 
                 try {
-                    const response = await fetch('http://localhost:8080/api/lobby/create', {
+                    const response = await fetch(this.baseUrl + '/api/lobby/create', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -410,6 +441,7 @@
                     }
                 } catch (error) {
                     this.showMessage('createMessage', 'Ошибка сети', 'error');
+                    console.error('Create room error:', error);
                 }
             }
 
@@ -424,7 +456,7 @@
                 }
 
                 try {
-                    const response = await fetch('http://localhost:8080/api/lobby/join', {
+                    const response = await fetch(this.baseUrl + '/api/lobby/join', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -448,6 +480,7 @@
                     }
                 } catch (error) {
                     this.showMessage('joinMessage', 'Ошибка сети', 'error');
+                    console.error('Join room error:', error);
                 }
             }
 
@@ -525,6 +558,7 @@
         // Глобальные функции
         function copyRoomId(roomId) {
             navigator.clipboard.writeText(roomId);
+            alert('ID комнаты скопирован: ' + roomId);
         }
 
         // Инициализация при загрузке страницы
