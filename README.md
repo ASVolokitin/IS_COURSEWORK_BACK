@@ -14,7 +14,7 @@ This command will create a JAR artifact in the target/ directory.
 
 ##### Start Docker Containers:
 ```bash
-`docker compose up --build
+docker compose up --build
 ```
 The --build flag ensures that Docker images are rebuilt before starting containers.
 
