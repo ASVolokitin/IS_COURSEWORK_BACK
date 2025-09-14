@@ -321,20 +321,15 @@
                 this.initialize();
             }
 
-            // Автоматическое определение базового URL
             getBaseUrl() {
-                // Если открыто через ngrok, используем текущий origin
                 if (window.location.host.includes('ngrok')) {
                     return window.location.origin;
                 }
-                // Локальная разработка
-                return 'http://localhost:8080';
+                return 'http://localhost:8081';
             }
 
-            // Автоматическое определение WebSocket URL
             getWebSocketUrl() {
                 const baseUrl = this.getBaseUrl();
-                // Заменяем http на ws, https на wss
                 return baseUrl.replace(/^http/, 'ws') + '/ws';
             }
 
@@ -348,7 +343,6 @@
                 this.updateStatus('connecting', 'Подключение WebSocket...');
                 
                 try {
-                    // Используем SockJS с автоматически определенным URL
                     const socket = new SockJS(this.baseUrl + '/ws');
                     this.stompClient = Stomp.over(socket);
                     
@@ -372,7 +366,6 @@
             setupSubscriptions() {
                 if (!this.stompClient || !this.connected) return;
                 
-                // Подписка на обновления списка комнат
                 this.stompClient.subscribe('/topic/rooms', (message) => {
                     try {
                         this.rooms = JSON.parse(message.body);
@@ -384,10 +377,8 @@
             }
 
             setupEventListeners() {
-                // Создание комнаты
                 document.getElementById('createRoomBtn').addEventListener('click', () => this.createRoom());
                 
-                // Присоединение к комнате
                 document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
             }
 
@@ -533,7 +524,6 @@
                 const element = document.getElementById(elementId);
                 element.innerHTML = `<div class="message message-${type}">${message}</div>`;
                 
-                // Автоочистка через 5 секунд
                 setTimeout(() => {
                     element.innerHTML = '';
                 }, 5000);
@@ -558,16 +548,13 @@
         // Глобальные функции
         function copyRoomId(roomId) {
             navigator.clipboard.writeText(roomId);
-            alert('ID комнаты скопирован: ' + roomId);
         }
 
-        // Инициализация при загрузке страницы
         let lobbyClient;
         document.addEventListener('DOMContentLoaded', () => {
             lobbyClient = new LobbyClient();
         });
 
-        // Экспортируем функции для кнопок
         window.copyRoomId = copyRoomId;
     </script>
 </body>
