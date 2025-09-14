@@ -8,7 +8,7 @@
 ##### Build Spring Application JAR:
 
 ```bash
-mvn clean package
+mvn clean package -DskipTests
 ```
 This command will create a JAR artifact in the target/ directory.
 
