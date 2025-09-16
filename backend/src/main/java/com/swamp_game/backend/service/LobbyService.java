@@ -120,7 +120,7 @@ public class LobbyService {
         return GameRoomDTO.builder()
             .roomId(gameRoom.getRoomId())
             .RoomName(gameRoom.getRoomName())
-            .creatorTgId(String.valueOf(gameRoom.getCreatorTgId()))
+            .creatorTgId(Long.valueOf(gameRoom.getCreatorTgId()))
             .maxPlayers(gameRoom.getMaxPlayers())
             .currentPlayers(gameRoom.getCurrentPlayersAmount())
             .status(gameRoom.getStatus())

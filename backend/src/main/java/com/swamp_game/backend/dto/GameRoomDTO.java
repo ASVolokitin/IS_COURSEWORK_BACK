@@ -16,7 +16,7 @@ import lombok.Setter;
 public class GameRoomDTO {
     private Long roomId;
     private String RoomName;
-    private String creatorTgId;
+    private Long creatorTgId;
     private int maxPlayers;
     private int currentPlayers;
     private GameStatus status;
