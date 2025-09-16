@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swamp Game Lobby</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        /* Стили остаются без изменений */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-connected { background: #27ae60; }
+        .status-connecting { background: #f39c12; }
+        .status-disconnected { background: #e74c3c; }
+
+        .user-info {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #ecf0f1;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #bdc3c7;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #229954; }
+
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+
+        .rooms-container {
+            grid-column: span 2;
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #bdc3c7;
+            padding: 15px;
+        }
+
+        .room-card {
+            background: white;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .room-card:hover {
+            transform: translateX(5px);
+            border-color: #3498db;
+        }
+
+        .room-info {
+            flex: 1;
+        }
+
+        .room-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .room-meta {
+            color: #7f8c8d;
+            font-size: 14px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .room-status {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-waiting { background: #d5f4e6; color: #145a32; }
+        .status-in-progress { background: #fadbd8; color: #922b21; }
+
+        .room-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .message-success { background: #d5f4e6; color: #145a32; border-left: 4px solid #27ae60; }
+        .message-error { background: #fadbd8; color: #922b21; border-left: 4px solid #e74c3c; }
+        .message-info { background: #d6eaf8; color: #1b4f72; border-left: 4px solid #3498db; }
+
+        .hidden { display: none; }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Swamp Game Lobby</h1>
+            <div id="connectionStatus" class="connection-status status-connecting">Подключение...</div>
+            <div class="user-info">
+                Игрок: <span id="username">Гость</span> | 
+                Комната: <span id="currentRoom">Не в комнате</span>
+            </div>
+        </header>
+
+        <div class="content">
+            <!-- Панель создания комнаты -->
+            <div class="panel" id="createPanel">
+                <h2>Создать комнату</h2>
+                <div id="createMessage"></div>
+                
+                <div class="form-group">
+                    <label for="playerName">Ваше имя:</label>
+                    <input type="text" id="playerName" placeholder="Введите ваше имя" value="Игрок">
+                </div>
+                
+                <div class="form-group">
+                    <label for="roomName">Название комнаты:</label>
+                    <input type="text" id="roomName" placeholder="Придумайте название комнаты">
+                </div>
+                
+                <div class="form-group">
+                    <label for="maxPlayers">Максимум игроков:</label>
+                    <select id="maxPlayers">
+                        <option value="2">2 игрока</option>
+                        <option value="4" selected>4 игрока</option>
+                        <option value="6">6 игроков</option>
+                    </select>
+                </div>
+                
+                <button id="createRoomBtn" class="btn-success">Создать комнату</button>
+            </div>
+
+            <!-- Панель присоединения -->
+            <div class="panel">
+                <h2>Присоединиться к комнате</h2>
+                <div id="joinMessage"></div>
+                
+                <div class="form-group">
+                    <label for="joinPlayerName">Ваше имя:</label>
+                    <input type="text" id="joinPlayerName" placeholder="Введите ваше имя" value="Игрок2">
+                </div>
+                
+                <div class="form-group">
+                    <label for="joinRoomId">ID комнаты:</label>
+                    <input type="text" id="joinRoomId" placeholder="Введите ID комнаты">
+                </div>
+                
+                <div class="form-group">
+                    <label for="joinPassword">Пароль (если есть):</label>
+                    <input type="password" id="joinPassword" placeholder="Необязательно">
+                </div>
+                
+                <button id="joinRoomBtn">Присоединиться</button>
+            </div>
+
+            <!-- Список комнат -->
+            <div class="rooms-container">
+                <h2>Доступные комнаты</h2>
+                <div id="roomsList">
+                    <div class="loading">Загрузка списка комнат...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LobbyClient {
+            constructor() {
+                this.stompClient = null;
+                this.connected = false;
+                this.currentUser = 'Гость';
+                this.currentRoom = null;
+                this.rooms = [];
+                this.baseUrl = this.getBaseUrl();
+                this.wsUrl = this.getWebSocketUrl();
+                
+                console.log('Base URL:', this.baseUrl);
+                console.log('WebSocket URL:', this.wsUrl);
+                
+                this.initialize();
+            }
+
+            getBaseUrl() {
+                if (window.location.host.includes('ngrok')) {
+                    return window.location.origin;
+                }
+                return 'http://localhost:8081';
+            }
+
+            getWebSocketUrl() {
+                const baseUrl = this.getBaseUrl();
+                return baseUrl.replace(/^http/, 'ws') + '/ws';
+            }
+
+            initialize() {
+                this.setupEventListeners();
+                this.connectWebSocket();
+                this.loadRooms();
+            }
+
+            connectWebSocket() {
+                this.updateStatus('connecting', 'Подключение WebSocket...');
+                
+                try {
+                    const socket = new SockJS(this.baseUrl + '/ws');
+                    this.stompClient = Stomp.over(socket);
+                    
+                    this.stompClient.debug = () => {}; // Отключаем логи
+                    
+                    this.stompClient.connect({}, (frame) => {
+                        this.connected = true;
+                        this.updateStatus('connected', 'WebSocket подключен');
+                        this.setupSubscriptions();
+                    }, (error) => {
+                        this.updateStatus('disconnected', 'Ошибка WebSocket');
+                        this.showMessage('joinMessage', 'WebSocket недоступен', 'error');
+                        console.error('WebSocket error:', error);
+                    });
+                } catch (error) {
+                    this.updateStatus('disconnected', 'Ошибка подключения');
+                    console.error('Connection error:', error);
+                }
+            }
+
+            setupSubscriptions() {
+                if (!this.stompClient || !this.connected) return;
+                
+                this.stompClient.subscribe('/topic/rooms', (message) => {
+                    try {
+                        this.rooms = JSON.parse(message.body);
+                        this.renderRoomsList();
+                    } catch (error) {
+                        console.error('Error parsing rooms:', error);
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                document.getElementById('createRoomBtn').addEventListener('click', () => this.createRoom());
+                
+                document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
+            }
+
+            async loadRooms() {
+                try {
+                    const response = await fetch(this.baseUrl + '/api/lobby');
+                    if (response.ok) {
+                        this.rooms = await response.json();
+                        this.renderRoomsList();
+                    } else {
+                        console.error('Failed to load rooms:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error loading rooms:', error);
+                    this.showMessage('roomsList', 'Ошибка загрузки комнат', 'error');
+                }
+            }
+
+            async createRoom() {
+                const playerId = document.getElementById('playerName').value.trim();
+                const roomName = document.getElementById('roomName').value.trim();
+                const maxPlayers = document.getElementById('maxPlayers').value;
+
+                if (!playerId || !roomName) {
+                    this.showMessage('createMessage', 'Заполните все поля', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(this.baseUrl + '/api/lobby/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            roomName: roomName,
+                            creatorId: playerId,
+                            maxPlayers: parseInt(maxPlayers)
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        this.showMessage('createMessage', 'Комната создана! ID: ' + result.roomId, 'success');
+                        this.currentUser = playerId;
+                        this.currentRoom = result.roomId;
+                        this.updateUserInfo();
+                    } else {
+                        this.showMessage('createMessage', 'Ошибка: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('createMessage', 'Ошибка сети', 'error');
+                    console.error('Create room error:', error);
+                }
+            }
+
+            async joinRoom() {
+                const playerId = document.getElementById('joinPlayerName').value.trim();
+                const roomId = document.getElementById('joinRoomId').value.trim();
+                const password = document.getElementById('joinPassword').value;
+
+                if (!playerId || !roomId) {
+                    this.showMessage('joinMessage', 'Заполните имя и ID комнаты', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(this.baseUrl + '/api/lobby/join', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            roomId: roomId,
+                            playerId: playerId,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        this.showMessage('joinMessage', 'Успешное присоединение!', 'success');
+                        this.currentUser = playerId;
+                        this.currentRoom = roomId;
+                        this.updateUserInfo();
+                    } else {
+                        this.showMessage('joinMessage', 'Ошибка: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('joinMessage', 'Ошибка сети', 'error');
+                    console.error('Join room error:', error);
+                }
+            }
+
+            renderRoomsList() {
+                const container = document.getElementById('roomsList');
+                
+                if (this.rooms.length === 0) {
+                    container.innerHTML = '<div class="loading">Нет доступных комнат</div>';
+                    return;
+                }
+
+                container.innerHTML = this.rooms.map(room => `
+                    <div class="room-card">
+                        <div class="room-info">
+                            <div class="room-name">${this.escapeHtml(room.name)}</div>
+                            <div class="room-meta">
+                                <span>ID: ${room.id}</span>
+                                <span>Создатель: ${this.escapeHtml(room.creatorId)}</span>
+                                <span>Игроков: ${room.currentPlayers}/${room.maxPlayers}</span>
+                                <span class="room-status status-${room.status.toLowerCase()}">
+                                    ${this.getStatusText(room.status)}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="room-actions">
+                            <input type="text" value="${room.id}" readonly 
+                                style="padding: 5px; margin-right: 10px; width: 120px;">
+                            <button onclick="copyRoomId('${room.id}')" 
+                                style="padding: 8px 12px; font-size: 12px;">
+                                Копировать ID
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateStatus(status, text) {
+                const element = document.getElementById('connectionStatus');
+                element.className = `connection-status status-${status}`;
+                element.textContent = text;
+            }
+
+            updateUserInfo() {
+                document.getElementById('username').textContent = this.currentUser;
+                document.getElementById('currentRoom').textContent = 
+                    this.currentRoom ? this.currentRoom : 'Не в комнате';
+            }
+
+            showMessage(elementId, message, type) {
+                const element = document.getElementById(elementId);
+                element.innerHTML = `<div class="message message-${type}">${message}</div>`;
+                
+                setTimeout(() => {
+                    element.innerHTML = '';
+                }, 5000);
+            }
+
+            getStatusText(status) {
+                const statusMap = {
+                    'WAITING': 'Ожидание',
+                    'IN_PROGRESS': 'В игре',
+                    'FINISHED': 'Завершена'
+                };
+                return statusMap[status] || status;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Глобальные функции
+        function copyRoomId(roomId) {
+            navigator.clipboard.writeText(roomId);
+        }
+
+        let lobbyClient;
+        document.addEventListener('DOMContentLoaded', () => {
+            lobbyClient = new LobbyClient();
+        });
+
+        window.copyRoomId = copyRoomId;
+    </script>
+</body>
+</html>
